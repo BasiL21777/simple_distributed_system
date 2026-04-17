@@ -1,0 +1,95 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sds-nginx
+    depends_on:
+      - api1
+      - api2
+      - api3
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+
+  api1:
+    build: ./api
+    container_name: sds-api1
+    environment:
+      SERVICE_NAME: api1
+      PORT: 3000
+      JWT_SECRET: supersecretjwt
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      TASK_QUEUE: task_queue
+      SERVICE_SHARED_SECRET: service-shared-secret
+      DATABASE_URL: postgres://appuser:apppass@db:5432/auditdb
+    depends_on:
+      - rabbitmq
+      - db
+
+  api2:
+    build: ./api
+    container_name: sds-api2
+    environment:
+      SERVICE_NAME: api2
+      PORT: 3000
+      JWT_SECRET: supersecretjwt
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      TASK_QUEUE: task_queue
+      SERVICE_SHARED_SECRET: service-shared-secret
+      DATABASE_URL: postgres://appuser:apppass@db:5432/auditdb
+    depends_on:
+      - rabbitmq
+      - db
+
+  api3:
+    build: ./api
+    container_name: sds-api3
+    environment:
+      SERVICE_NAME: api3
+      PORT: 3000
+      JWT_SECRET: supersecretjwt
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      TASK_QUEUE: task_queue
+      SERVICE_SHARED_SECRET: service-shared-secret
+      DATABASE_URL: postgres://appuser:apppass@db:5432/auditdb
+    depends_on:
+      - rabbitmq
+      - db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: sds-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  worker:
+    build: ./worker
+    container_name: sds-worker
+    environment:
+      SERVICE_NAME: worker
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      TASK_QUEUE: task_queue
+      SERVICE_SHARED_SECRET: service-shared-secret
+      DATABASE_URL: postgres://appuser:apppass@db:5432/auditdb
+    depends_on:
+      - rabbitmq
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: sds-db
+    environment:
+      POSTGRES_DB: auditdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  postgres_data:
